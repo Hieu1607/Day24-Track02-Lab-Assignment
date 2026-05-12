@@ -2,62 +2,56 @@
 import pandas as pd
 import great_expectations as gx
 from great_expectations.core.expectation_suite import ExpectationSuite
+import re
+from great_expectations.expectations import (
+    ExpectColumnValueLengthsToEqual,
+    ExpectColumnValuesToBeBetween,
+    ExpectColumnValuesToBeInSet,
+    ExpectColumnValuesToBeUnique,
+    ExpectColumnValuesToMatchRegex,
+    ExpectColumnValuesToNotBeNull,
+)
 
 def build_patient_expectation_suite() -> ExpectationSuite:
     """
-    TODO: Tạo expectation suite cho anonymized patient data.
+    Tạo expectation suite cho patient data.
     """
     context = gx.get_context()
-    suite = context.add_expectation_suite("patient_data_suite")
+    suite = ExpectationSuite(name="patient_data_suite")
+    suite = context.suites.add_or_update(suite)
 
-    # Lấy validator
-    df = pd.read_csv("data/raw/patients_raw.csv")
-    validator = context.sources.pandas_default.read_dataframe(df)
-
-    # --- TASK: Thêm các expectations ---
-
-    # 1. patient_id không được null
-    validator.expect_column_values_to_not_be_null("patient_id")
-
-    # 2. TODO: cccd phải có đúng 12 ký tự
-    validator.expect_column_value_lengths_to_equal(
-        column=___,
-        value=___
-    )
-
-    # 3. TODO: ket_qua_xet_nghiem phải trong khoảng [0, 50]
-    validator.expect_column_values_to_be_between(
-        column=___,
-        min_value=___,
-        max_value=___
-    )
-
-    # 4. TODO: benh phải thuộc danh sách hợp lệ
     valid_conditions = ["Tiểu đường", "Huyết áp cao", "Tim mạch", "Khỏe mạnh"]
-    validator.expect_column_values_to_be_in_set(
-        column=___,
-        value_set=___
+    suite.expectations = []
+    suite.add_expectation(ExpectColumnValuesToNotBeNull(column="patient_id"))
+    suite.add_expectation(ExpectColumnValueLengthsToEqual(column="cccd", value=12))
+    suite.add_expectation(
+        ExpectColumnValuesToBeBetween(
+            column="ket_qua_xet_nghiem",
+            min_value=0,
+            max_value=50,
+        )
     )
-
-    # 5. TODO: email phải match regex pattern
-    validator.expect_column_values_to_match_regex(
-        column="email",
-        regex=r"___"    # TODO: email regex
+    suite.add_expectation(
+        ExpectColumnValuesToBeInSet(column="benh", value_set=valid_conditions)
     )
-
-    # 6. TODO: Không được có duplicate patient_id
-    validator.expect_column_values_to_be_unique(column=___)
-
-    validator.save_expectation_suite()
+    suite.add_expectation(
+        ExpectColumnValuesToMatchRegex(
+            column="email",
+            regex=r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$",
+        )
+    )
+    suite.add_expectation(ExpectColumnValuesToBeUnique(column="patient_id"))
+    context.suites.add_or_update(suite)
     return suite
 
 
 def validate_anonymized_data(filepath: str) -> dict:
     """
-    TODO: Validate anonymized data.
+    Validate anonymized data.
     Trả về dict: {"success": bool, "failed_checks": list, "stats": dict}
     """
     df = pd.read_csv(filepath)
+    original_df = pd.read_csv("data/raw/patients_raw.csv")
     results = {
         "success": True,
         "failed_checks": [],
@@ -67,14 +61,38 @@ def validate_anonymized_data(filepath: str) -> dict:
         }
     }
 
-    # Check 1: Không còn CCCD gốc dạng số thuần túy
-    # (sau anonymization, cccd phải là fake hoặc masked)
-    # TODO: implement check
+    original_cccds = set(original_df["cccd"].astype(str))
+    reused_cccds = df["cccd"].astype(str).isin(original_cccds)
+    if reused_cccds.any():
+        results["success"] = False
+        results["failed_checks"].append(
+            "Anonymized dataset vẫn chứa CCCD gốc từ raw dataset."
+        )
 
-    # Check 2: Không có null values trong các cột quan trọng
-    # TODO: implement check
+    required_columns = ["patient_id", "ho_ten", "cccd", "so_dien_thoai", "email"]
+    null_columns = [column for column in required_columns if df[column].isnull().any()]
+    if null_columns:
+        results["success"] = False
+        results["failed_checks"].append(
+            f"Các cột quan trọng có giá trị null: {', '.join(null_columns)}"
+        )
 
-    # Check 3: Số rows phải bằng original
-    # TODO: implement check
+    if len(df) != len(original_df):
+        results["success"] = False
+        results["failed_checks"].append(
+            "Số dòng anonymized data không khớp raw data."
+        )
+
+    email_pattern = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+    invalid_emails = ~df["email"].astype(str).str.match(email_pattern)
+    if invalid_emails.any():
+        results["success"] = False
+        results["failed_checks"].append(
+            "Anonymized dataset có email không đúng định dạng."
+        )
+
+    results["stats"]["pii_columns_validated"] = required_columns
+    results["stats"]["row_count_matches"] = len(df) == len(original_df)
+    results["stats"]["raw_cccd_leak_count"] = int(reused_cccds.sum())
 
     return results

@@ -1,0 +1,53 @@
+tool_path: C:\Users\Admin\AppData\Local\Temp\opa.exe
+Version: 1.16.2
+Build Commit: 85f6d990d19094da38e829561813e7da7fbae272
+Build Timestamp: 2026-05-12T10:03:47Z
+Build Hostname: 
+Go Version: go1.26.3
+Platform: windows/amd64
+Rego Version: v1
+WebAssembly: available
+
+check_exit_code: 0
+check_output:
+  <no output>
+
+case: admin_training_read
+allow_exit_code: 0
+allow_result:
+  true
+deny_exit_code: 0
+deny_result:
+  false
+
+case: ml_engineer_delete_production
+allow_exit_code: 0
+allow_result:
+  false
+deny_exit_code: 0
+deny_result:
+  true
+
+case: data_analyst_metrics_read
+allow_exit_code: 0
+allow_result:
+  true
+deny_exit_code: 0
+deny_result:
+  false
+
+case: intern_sandbox_write
+allow_exit_code: 0
+allow_result:
+  true
+deny_exit_code: 0
+deny_result:
+  false
+
+case: admin_export_restricted_us
+allow_exit_code: 0
+allow_result:
+  false
+deny_exit_code: 0
+deny_result:
+  true

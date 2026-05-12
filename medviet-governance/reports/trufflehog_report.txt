@@ -1,0 +1,7 @@
+tool_path: D:\miniconda\Scripts\trufflehog.exe
+repo_root: C:\Users\Admin\Desktop\Day24-Track02-Lab-Assignment
+scope: ^medviet-governance/
+args: --repo_path <root> --regex --entropy=True -i <include-file> .
+exit_code: 0
+output:
+No findings.

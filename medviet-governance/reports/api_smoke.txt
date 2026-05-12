@@ -1,0 +1,4 @@
+bob_raw=403
+alice_raw=200
+carol_metrics=200
+bob_delete=403

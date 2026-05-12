@@ -1,0 +1,2 @@
+roundtrip_ok=True
+algorithm=AES-256-GCM
